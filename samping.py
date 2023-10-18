@@ -1,7 +1,7 @@
 import cv2
-import math as m
 import mediapipe as mp
 import time
+import math as m
 import requests
 
 
@@ -18,7 +18,7 @@ def find_angle(x1, y1, x2, y2):
 
 
 def send_warning():
-    print('BAD POSTURE')
+    print('POSTUR BURUK')
 
 
 good_frames = 0
@@ -78,9 +78,9 @@ while cap.isOpened():
         offset = find_distance(l_shoulder_x, l_shoulder_y, r_shoulder_x, r_shoulder_y)
 
         if offset < 100:
-            cv2.putText(img, str(int(offset)) + 'Sejajar', (w - 150, 30), font, 0.9, green, 2)
+            cv2.putText(img, str(int(offset)) + 'Lurus', (w - 150, 30), font, 0.9, green, 2)
         else:
-            cv2.putText(img, str(int(offset)) + 'Cek', (w - 150, 30), font, 0.9, red, 2)
+            cv2.putText(img, str(int(offset)) + 'Cek..', (w - 150, 30), font, 0.9, red, 2)
 
         neck_inclination = find_angle(l_shoulder_x, l_shoulder_y, l_ear_x, l_ear_y)
         torso_inclination = find_angle(l_hip_x, l_hip_y, l_shoulder_x, l_shoulder_y)
@@ -102,8 +102,8 @@ while cap.isOpened():
         # Text string for display.
         angle_text_string = 'Leher : ' + str(int(neck_inclination)) + '  Batang Tubuh : ' + str(int(torso_inclination))
 
-        if neck_inclination < 40 and torso_inclination < 10:
-            bad_frames = 0
+        if neck_inclination < 20 and torso_inclination < 20:
+            # bad_frames = 0
             good_frames += 1
 
             cv2.putText(img, angle_text_string, (10, 30), font, 0.9, light_green, 2)
@@ -115,7 +115,7 @@ while cap.isOpened():
             cv2.line(img, (l_hip_x, l_hip_y), (l_shoulder_x, l_shoulder_y), green, 4)
             cv2.line(img, (l_hip_x, l_hip_y), (l_hip_x, l_hip_y - 100), green, 4)
         else:
-            good_frames = 0
+            # good_frames = 0
             bad_frames += 1
 
             cv2.putText(img, angle_text_string, (10, 30), font, 0.9, red, 2)
@@ -132,21 +132,40 @@ while cap.isOpened():
         good_time = (1 / fps) * good_frames
         bad_time = (1 / fps) * bad_frames
 
+        total_time = good_time + bad_time
+
+        correct_percent = (good_time/total_time) * 100
+
         # Pose time.
-        if good_time > 0:
-            time_string_good = 'Durasi postur baik : ' + str(round(good_time, 1)) + 's'
-            cv2.putText(img, time_string_good, (10, h - 20), font, 0.9, green, 2)
-            r = requests.get('https://ergoside.com/laporan?status=aman')
-            print("berhasil status aman")
-        else:
-            time_string_bad = 'Durasi postur buruk : ' + str(round(bad_time, 1)) + 's'
-            cv2.putText(img, time_string_bad, (10, h - 20), font, 0.9, red, 2)
-            r = requests.get('https://ergoside.com/laporan?status=bahaya')
-            print("berhasil status bahaya")
+        # if good_time > 0:
+        #     time_string_good = 'Durasi postur baik : ' + str(round(good_time, 1)) + 's'
+        #     cv2.putText(img, time_string_good, (10, h - 20), font, 0.9, green, 2)
+            
+        # else:
+        #     time_string_bad = 'Durasi postur buruk : ' + str(round(bad_time, 1)) + 's'
+        #     cv2.putText(img, time_string_bad, (10, h - 20), font, 0.9, red, 2)
+
+        time_string_good = 'Durasi postur baik : ' + str(round(good_time, 1)) + 's'
+        cv2.putText(img, time_string_good, (10, h - 45), font, 0.9, green, 2)
+  
+        time_string_bad = 'Durasi postur buruk : ' + str(round(bad_time, 1)) + 's'
+        cv2.putText(img, time_string_bad, (10, h - 15), font, 0.9, red, 2)
+
+        time_string_total = 'Total durasi : ' + str(round(total_time, 1)) + 's'
+        cv2.putText(img, time_string_total, (10, h - 75), font, 0.9, blue, 2)
+
+        percent_string = str(round(correct_percent, 2)) + ' %'
+        cv2.putText(img, percent_string, (w-160, h - 75), font, 1.2, green, 2)
+            
 
         # If you stay in bad posture for more than 3 minutes (180s) send an alert.
-        if bad_time > 180:
+        if correct_percent < 50:
             send_warning()
+            r = requests.get('https://ergoside.com/laporan?status=bahaya')
+            print("berhasil status bahaya")
+        else:
+            r = requests.get('https://ergoside.com/laporan?status=aman')
+            print("berhasil status aman")
 
     cv2.imshow('img', img)
     if cv2.waitKey(5) & 0XFF == 27:
